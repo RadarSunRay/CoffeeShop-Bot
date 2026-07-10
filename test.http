@@ -1,0 +1,7 @@
+GET http://localhost:5041/api/users
+###
+POST http://localhost:5041/api/users/change-points?phoneNumber=79157483776&points=150
+// начислить бонус
+###
+POST http://localhost:5041/api/users/change-points?phoneNumber=79157483776&points=-50
+// списать бонус

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка CoffeeShop</title>
+    <!-- Подключаем красивые стили Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container my-5" style="max-width: 800px;">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h3 class="mb-0">☕ Панель Бариста: Бонусная система</h3>
+            </div>
+            <div class="card-body">
+                
+                <!-- Форма поиска и изменения баланса -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-5">
+                        <input type="text" id="phoneInput" class="form-control" placeholder="Номер телефона (+7...)">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" id="pointsInput" class="form-control" placeholder="Кол-во баллов (н-р: 100 или -50)">
+                    </div>
+                    <div class="col-md-3">
+                        <button onclick="changePoints()" class="btn btn-primary w-100">Применить</button>
+                    </div>
+                </div>
+
+                <div id="statusMessage" class="alert d-none"></div>
+
+                <!-- Таблица зарегистрированных пользователей -->
+                <h4 class="mt-4 mb-3">Зарегистрированные клиенты</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Telegram ник</th>
+                                <th>Телефон</th>
+                                <th>Баланс (бонусы)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Сюда JavaScript вставит пользователей из БД -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Наш JavaScript, который общается с твоим C# API -->
+    <script>
+        // Функция для загрузки списка пользователей с сервера
+        async function loadUsers() {
+            const response = await fetch('/api/users');
+            const result = await response.json();
+            
+            // Если твой API возвращает { result: [...] }, достаем массив
+            const users = result.result || result; 
+            
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = ''; // Очищаем таблицу
+
+            users.forEach(user => {
+                const row = `<tr>
+                    <td><b>@${user.telegramUserName}</b></td>
+                    <td>${user.phoneNumber || '<i>Не привязан</i>'}</td>
+                    <td><span class="badge bg-success fs-6">${user.bonusCoint}</span></td>
+                </tr>`;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
+        }
+
+        // Функция для изменения баллов
+        async function changePoints() {
+            const phone = document.getElementById('phoneInput').value;
+            const points = document.getElementById('pointsInput').value;
+            const statusDiv = document.getElementById('statusMessage');
+
+            if (!phone || !points) {
+                alert('Заполните все поля!');
+                return;
+            }
+
+            // Делаем POST запрос к твоему C# эндпоинту!
+            const response = await fetch(`/api/users/change-points?phoneNumber=${encodeURIComponent(phone)}&points=${points}`, {
+                method: 'POST'
+            });
+
+            const data = await response.json();
+
+            statusDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
+            if (response.ok) {
+                statusDiv.classList.add('alert-success');
+                statusDiv.innerText = data.message;
+                // Очищаем поля ввода
+                document.getElementById('pointsInput').value = '';
+                // Перезагружаем таблицу пользователей, чтобы увидеть изменения!
+                loadUsers(); 
+            } else {
+                statusDiv.classList.add('alert-danger');
+                statusDiv.innerText = data.message || 'Ошибка!';
+            }
+        }
+
+        // Загружаем пользователей сразу при открытии страницы
+        loadUsers();
+    </script>
+</body>
+</html>
