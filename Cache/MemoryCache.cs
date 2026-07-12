@@ -30,20 +30,4 @@ public class MemoryCache
         }
         return user;
     }
-    public async Task<User> GetUserId(long id)
-    {
-        if (memoryCache.TryGetValue(id, out User? usercache))
-        {
-            return usercache;
-        }
-        User? user = await db.users.FirstOrDefaultAsync(u => u.Id == id);
-        if (user == null)
-        {
-            return null;
-        }
-        
-        memoryCache.Set(user.TelegramUserName, user, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5)));
-            
-        return user;
-    }
 }
