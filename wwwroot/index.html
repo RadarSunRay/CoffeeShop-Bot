@@ -18,7 +18,7 @@
                 <!-- Форма поиска и изменения баланса -->
                 <div class="row g-3 mb-4">
                     <div class="col-md-5">
-                        <input type="text" id="phoneInput" class="form-control" placeholder="Номер телефона (+7...)">
+                        <input type="text" id="usernameInput" class="form-control" placeholder="Никнейм в Telegram (@username)">
                     </div>
                     <div class="col-md-4">
                         <input type="number" id="pointsInput" class="form-control" placeholder="Кол-во баллов (н-р: 100 или -50)">
@@ -76,35 +76,42 @@
 
         // Функция для изменения баллов
         async function changePoints() {
-            const phone = document.getElementById('phoneInput').value;
-            const points = document.getElementById('pointsInput').value;
-            const statusDiv = document.getElementById('statusMessage');
+    // 1. Считываем значения из полей ввода
+    const username = document.getElementById('usernameInput').value; // Наш новый ID!
+    const points = document.getElementById('pointsInput').value;
+    const statusDiv = document.getElementById('statusMessage');
 
-            if (!phone || !points) {
-                alert('Заполните все поля!');
-                return;
-            }
+    // Валидация: проверяем, что поля не пустые
+    if (!username || !points) {
+        alert('Заполните все поля!');
+        return;
+    }
 
-            // Делаем POST запрос к твоему C# эндпоинту!
-            const response = await fetch(`/api/users/change-points?phoneNumber=${encodeURIComponent(phone)}&points=${points}`, {
-                method: 'POST'
-            });
+    // 2. Делаем POST запрос к твоему обновленному C# API
+    // Передаем параметр username вместо phoneNumber
+    const response = await fetch(`/api/users/change-points?username=${encodeURIComponent(username)}&points=${points}`, {
+        method: 'POST'
+    });
 
-            const data = await response.json();
+    const data = await response.json();
 
-            statusDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
-            if (response.ok) {
-                statusDiv.classList.add('alert-success');
-                statusDiv.innerText = data.message;
-                // Очищаем поля ввода
-                document.getElementById('pointsInput').value = '';
-                // Перезагружаем таблицу пользователей, чтобы увидеть изменения!
-                loadUsers(); 
-            } else {
-                statusDiv.classList.add('alert-danger');
-                statusDiv.innerText = data.message || 'Ошибка!';
-            }
-        }
+    // 3. Выводим результат на экран
+    statusDiv.classList.remove('d-none', 'alert-success', 'alert-danger');
+    if (response.ok) {
+        statusDiv.classList.add('alert-success');
+        statusDiv.innerText = data.message;
+        
+        // Очищаем поля ввода
+        document.getElementById('usernameInput').value = '';
+        document.getElementById('pointsInput').value = '';
+        
+        // Перезагружаем таблицу, чтобы увидеть новые балансы на лету!
+        loadUsers(); 
+    } else {
+        statusDiv.classList.add('alert-danger');
+        statusDiv.innerText = data.message || 'Ошибка начисления!';
+    }
+}
 
         // Загружаем пользователей сразу при открытии страницы
         loadUsers();

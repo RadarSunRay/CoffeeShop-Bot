@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
+using CoffeeShopBot.Cache;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,8 @@ if (string.IsNullOrEmpty(botToken))
 }
 builder.Services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(botToken));
 builder.Services.AddHostedService<TelegramBotBackgroundService>();
+builder.Services.AddTransient<MemoryCache>();
+builder.Services.AddMemoryCache();
 
 var app = builder.Build();
 
@@ -71,32 +74,37 @@ app.MapGet("/api/users", async (ApplicationContext db) =>
     return await db.users.ToListAsync();
 }).RequireAuthorization();
 
-app.MapPost("/api/users/change-points", async (string phoneNumber, ApplicationContext db, int points, ITelegramBotClient botClient) =>
+app.MapPost("/api/users/change-points", async (string username, int points, ApplicationContext db, ITelegramBotClient botClient, MemoryCache cache) =>
 {
-    if (!phoneNumber.StartsWith("+"))
+    string cleanUsername = username.Replace("@", "").Trim();
+    User? user = await cache.GetUserName(username);
+
+    if (user == null)
     {
-        phoneNumber = "+" + phoneNumber;
+        return Results.NotFound(new { message = $"Пользователь @{cleanUsername} не найден в базе!" });
     }
 
-    User? user = await db.users.FirstOrDefaultAsync(p => p.PhoneNumber == phoneNumber);
-
-    if (user == null) return Results.NotFound(new {message = $"Пользователь с таким номером {phoneNumber} не найден"});
-    
     user.BonusCoint += points;
+
     if (user.BonusCoint < 0)
     {
-        user.BonusCoint = 0;
+        user.BonusCoint = 0; 
     }
+
     await db.SaveChangesAsync();
+
     await botClient.SendMessage(
         chatId: user.Id,
-        text: $"🎉 Ваш баланс обновлен!\nВам {(points > 0 ? "начислено" : "списано")} {Math.Abs(points)} бонусов.\nТекущий баланс: {user.BonusCoint} бонусов.",
+        text: $"🎉 <b>Баланс обновлен!</b>\n\nВам {(points > 0 ? "начислено" : "списано")} {Math.Abs(points)} бонусов.\nТекущий баланс: <b>{user.BonusCoint}</b> бонусов.",
         parseMode: Telegram.Bot.Types.Enums.ParseMode.Html
     );
-    System.Console.WriteLine($"Уведомление отправлено пользователю {user.TelegramUserName} ({user.Id})");
-    
-    return Results.Ok(new {message = $"Успешно! Баланс пользователя {user.TelegramUserName} изменен на {points}. Текущий баланс {user.BonusCoint}"});
-}).RequireAuthorization();
+
+    return Results.Ok(new 
+    { 
+        message = $"Успешно! Баланс @{user.TelegramUserName} изменен на {points}. Текущий баланс: {user.BonusCoint}" 
+    });
+})
+.RequireAuthorization();
 
 app.MapPost("/login", async(HttpContext context, ApplicationContext db) =>
 {
@@ -131,5 +139,13 @@ app.MapGet("/logout", async (HttpContext context) =>
 {
     await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.Redirect("/login");
+});
+app.MapGet("/api/users-deleted/{telegramId}", async (long telegramId, ApplicationContext db) =>
+{
+    var user = await db.users.FindAsync(telegramId);
+    if (user == null) return Results.NotFound(new {message = "Пользователь не найден"});
+    db.users.Remove(user);
+    await db.SaveChangesAsync();
+    return Results.Ok(new {message = "Пользователь удален"}); 
 });
 app.Run();

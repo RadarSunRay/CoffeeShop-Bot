@@ -72,6 +72,7 @@ public class TelegramBotBackgroundService : BackgroundService
             await botClient.SendMessage(
                 chatId: chatId,
                 text: $"✅ <b>Регистрация успешно завершена!</b>\n\nНомер {phoneNumber} успешно привязан к вашей бонусной карте.\n\nТеперь вы можете копить баллы. Нажмите на кнопки меню ниже!",
+                replyMarkup: GetMainMenuKeyboard(),
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
                 cancellationToken: cancellationToken
             );
@@ -79,11 +80,11 @@ public class TelegramBotBackgroundService : BackgroundService
         }
         if (message.Text is not { } messageText) return;
 
-        _logger.LogInformation($"Получено сообщение: {messageText}, в чате: {chatId}.", messageText, chatId);
+        _logger.LogInformation($"Получено сообщение: {messageText}, в чате: {chatId}. {DateTime.Now}", messageText, chatId);
         
         if (messageText == "/start")
         {
-            string userName = message.From?.Username ?? "No name";
+            string userName = message.From?.Username ?? "No_name";
 
             bool isNewUser = false;
 
