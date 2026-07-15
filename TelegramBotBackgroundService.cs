@@ -1,5 +1,7 @@
 using System.Data.Common;
+using System.Diagnostics;
 using CoffeeShopBot.Data;
+using Microsoft.EntityFrameworkCore;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -82,8 +84,23 @@ public class TelegramBotBackgroundService : BackgroundService
 
         _logger.LogInformation($"Получено сообщение: {messageText}, в чате: {chatId}. {DateTime.Now}", messageText, chatId);
         
-        if (messageText == "/start")
+        if (messageText.StartsWith("/start"))
         {
+            var parts = messageText.Split(' ');
+
+            if (parts.Length > 1)
+            {
+                string referrerIdStr = parts[1];
+
+                if (long.TryParse(referrerIdStr, out long referrId))
+                {
+                    if (referrId != chatId)
+                    {
+                        await ProcessReferal(referrId, chatId);
+                    }
+                }
+            }
+
             string userName = message.From?.Username ?? "No_name";
 
             bool isNewUser = false;
@@ -155,6 +172,20 @@ public class TelegramBotBackgroundService : BackgroundService
                 cancellationToken: cancellationToken
             );
         }
+        else if (messageText.Contains("🤝 Пригласить друга"))
+        {
+            string botName = "artemswet_bot";
+            string refLink = $"https://t.me/{botName}?start={chatId}";
+
+            await botClient.SendMessage(
+                chatId: chatId,
+                text: $"🎁 Дарим 50 бонусов за каждого друга!\n\n" +
+              $"Отправь эту ссылку другу, и когда он запустит бота, ты получишь баллы:\n\n" +
+              $"`{refLink}`",
+              parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
+              cancellationToken: cancellationToken
+            );
+        }
         else if (messageText == "☕️ О кофейне")
         {
             await botClient.SendMessage
@@ -204,7 +235,7 @@ public class TelegramBotBackgroundService : BackgroundService
     {
         var keyboard = new ReplyKeyboardMarkup(new []
         {
-            new KeyboardButton[] {"💳 Мой баланс"},
+            new KeyboardButton[] {"💳 Мой баланс", "🤝 Пригласить друга"},
             new KeyboardButton[] {"☕️ О кофейне", "📞 Контакты"}
         })
         {
@@ -225,4 +256,30 @@ public class TelegramBotBackgroundService : BackgroundService
         return keyboard;
     }
 
+    private async Task ProcessReferal(long referrId, long newUserId)
+    {
+        using (var scope = _serviceProvider.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+
+            var user = await db.users.FindAsync(newUserId);
+
+            if (user != null) return;
+            
+            var referrer = await db.users.FindAsync(referrId);
+
+            if (referrer != null)
+            {
+                referrer.BonusCoint += 50;
+
+                await db.SaveChangesAsync();
+
+                await _botclient.SendMessage(
+                    chatId: referrId,
+                    text: "🎉 Ура! По вашей ссылке зарегистрировался новый друг. Вам начислено <b>50 бонусов</b>!",
+                    parseMode: Telegram.Bot.Types.Enums.ParseMode.Html
+                );
+            }
+        }
+    }
 }
