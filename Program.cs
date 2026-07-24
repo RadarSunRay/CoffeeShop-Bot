@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using CoffeeShopBot.Cache;
+using System.IO.Compression;
+using Microsoft.AspNetCore.ResponseCompression;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,10 +30,13 @@ builder.Services.AddSingleton<ITelegramBotClient>(new TelegramBotClient(botToken
 builder.Services.AddHostedService<TelegramBotBackgroundService>();
 builder.Services.AddTransient<MemoryCache>();
 builder.Services.AddMemoryCache();
-
+builder.Services.AddResponseCompression(options =>
+{
+    options.Providers.Add<BrotliCompressionProvider>();
+});
 var app = builder.Build();
 
-
+app.UseResponseCompression();
 app.UseStaticFiles();
 
 app.UseRouting();
