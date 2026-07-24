@@ -33,6 +33,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddResponseCompression(options =>
 {
     options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
 });
 var app = builder.Build();
 
