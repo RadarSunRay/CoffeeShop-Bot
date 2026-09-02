@@ -23,11 +23,10 @@ public class MemoryCache
         User? user = await db.users.FirstOrDefaultAsync(u => u.TelegramUserName.ToLower() == userName.ToLower());
         if (user == null)
         {
-            if (user != null)
-            {
-                memoryCache.Set(user.TelegramUserName, user, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5)));
-            }
+            return null;
         }
+        
+        memoryCache.Set(user.TelegramUserName, user, new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(5)));
         return user;
     }
 }
