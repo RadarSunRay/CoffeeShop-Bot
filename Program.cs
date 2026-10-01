@@ -99,11 +99,7 @@ app.MapPost("/api/users/change-points", async (string username, int points, Appl
 
     await db.SaveChangesAsync();
 
-    await botClient.SendMessage(
-        chatId: user.Id,
-        text: $"Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆\nМЕГА ПРАНК ХИХИХИХИХИХИХИХИХИХИХИХИХ",
-        parseMode: Telegram.Bot.Types.Enums.ParseMode.Html
-    );
+   
 
     return Results.Ok(new
     {
