@@ -1,17 +1,14 @@
+using CoffeeShopBot.Cache;
 using CoffeeShopBot.Data;
-using Microsoft.EntityFrameworkCore;
-using Telegram.Bot;
 using CoffeeShopBot.Models;
 using CoffeeShopBot.Service;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
-using CoffeeShopBot.Cache;
-using System.IO.Compression;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.ResponseCompression;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using Telegram.Bot;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,8 +32,35 @@ builder.Services.AddResponseCompression(options =>
     options.Providers.Add<BrotliCompressionProvider>();
     options.Providers.Add<GzipCompressionProvider>();
 });
+
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+
+    if (!await db.admins.AnyAsync())
+    {
+        var admin = new Admin
+        {
+            Name = "Admin"
+        };
+
+        var password = builder.Configuration["Admin:Password"];
+
+        if (string.IsNullOrEmpty(password))
+        {
+            throw new Exception("Admin password is not configured");
+        }
+
+        var hasher = new PasswordHasher<Admin>();
+
+        admin.PasswordHash = hasher.HashPassword(admin, password);
+
+        db.admins.Add(admin);
+        await db.SaveChangesAsync();
+    }
+}
 app.UseResponseCompression();
 app.UseStaticFiles();
 
@@ -70,25 +94,25 @@ app.MapPost("/api/users/change-points", async (string username, int points, Appl
 
     if (user.BonusCoint < 0)
     {
-        user.BonusCoint = 0; 
+        user.BonusCoint = 0;
     }
 
     await db.SaveChangesAsync();
 
     await botClient.SendMessage(
         chatId: user.Id,
-        text: $"🎉 <b>Баланс обновлен!</b>\n\nВам {(points > 0 ? "начислено" : "списано")} {Math.Abs(points)} бонусов.\nТекущий баланс: <b>{user.BonusCoint}</b> бонусов.",
+        text: $"Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆Я КАЛЕНДАРЬ 📆\nМЕГА ПРАНК ХИХИХИХИХИХИХИХИХИХИХИХИХ",
         parseMode: Telegram.Bot.Types.Enums.ParseMode.Html
     );
 
-    return Results.Ok(new 
-    { 
-        message = $"Успешно! Баланс @{user.TelegramUserName} изменен на {points}. Текущий баланс: {user.BonusCoint}" 
+    return Results.Ok(new
+    {
+        message = $"Успешно! Баланс @{user.TelegramUserName} изменен на {points}. Текущий баланс: {user.BonusCoint}"
     });
 })
 .RequireAuthorization();
 
-app.MapPost("/login", async(HttpContext context, ApplicationContext db) =>
+app.MapPost("/login", async (HttpContext context, ApplicationContext db) =>
 {
     var form = context.Request.Form;
 
@@ -100,20 +124,25 @@ app.MapPost("/login", async(HttpContext context, ApplicationContext db) =>
     string? userName = form["login"];
     string? password = form["password"];
 
-    Admin? admin = await db.admins.FirstOrDefaultAsync(u => u.userName == userName && u.password == password);
+    Admin? admin = await db.admins.FirstOrDefaultAsync(u => u.Name == userName);
 
-    if (admin != null)
-    {
-        var claims = new List<Claim> {new Claim(ClaimTypes.Name, userName)};
-        var identity = new ClaimsIdentity(claims, "Cookies");
-        var principal = new ClaimsPrincipal(identity);
-        await context.SignInAsync(principal);
-        return Results.Redirect("/");
-    }
-    else
+    if (admin == null) return Results.Redirect("/login?error=InvalidCredentials");
+
+    var hasher = new PasswordHasher<Admin>();
+
+    var result = hasher.VerifyHashedPassword(admin, admin.PasswordHash, password!);
+
+    if (result != PasswordVerificationResult.Success)
     {
         return Results.Redirect("/login?error=InvalidCredentials");
     }
+
+    var claims = new List<Claim> { new Claim(ClaimTypes.Name, userName!) };
+    var identity = new ClaimsIdentity(claims, "Cookies");
+    var principal = new ClaimsPrincipal(identity);
+    await context.SignInAsync(principal);
+    return Results.Redirect("/");
+
 
 });
 
@@ -125,9 +154,9 @@ app.MapGet("/logout", async (HttpContext context) =>
 app.MapGet("/api/users-deleted/{telegramId}", async (long telegramId, ApplicationContext db) =>
 {
     var user = await db.users.FindAsync(telegramId);
-    if (user == null) return Results.NotFound(new {message = "Пользователь не найден"});
+    if (user == null) return Results.NotFound(new { message = "Пользователь не найден" });
     db.users.Remove(user);
     await db.SaveChangesAsync();
-    return Results.Ok(new {message = "Пользователь удален"}); 
+    return Results.Ok(new { message = "Пользователь удален" });
 });
 app.Run();

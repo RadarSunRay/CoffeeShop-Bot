@@ -10,10 +10,4 @@ public class ApplicationContext : DbContext
     {
         Database.EnsureCreated();
     }
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Admin>().HasData(
-            new Admin {Id = 1, userName = "Admin", password = "1234"}
-        );
-    }
 }
