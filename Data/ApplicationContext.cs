@@ -8,6 +8,6 @@ public class ApplicationContext : DbContext
     public DbSet<Admin> admins {get;set;} = null!;
     public ApplicationContext(DbContextOptions<ApplicationContext> options) : base (options)
     {
-        Database.EnsureCreated();
+        
     }
 }

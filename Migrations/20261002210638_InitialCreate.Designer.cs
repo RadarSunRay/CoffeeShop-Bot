@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CoffeeShopBot.Migrations
 {
     [DbContext(typeof(ApplicationContext))]
-    [Migration("20261001134642_AdminPasswordHashed")]
-    partial class AdminPasswordHashed
+    [Migration("20261002210638_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -54,6 +54,9 @@ namespace CoffeeShopBot.Migrations
                     b.Property<string>("TelegramUserName")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("isNewUser")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
